@@ -1,0 +1,103 @@
+package com.pedrocf01.backend;
+
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.parameters.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.infrastructure.item.ItemProcessor;
+import org.springframework.batch.infrastructure.item.ItemReader;
+import org.springframework.batch.infrastructure.item.ItemWriter;
+import org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
+import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.file.transform.FixedLengthTokenizer;
+import org.springframework.batch.infrastructure.item.file.transform.Range;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import javax.sql.DataSource;
+import java.math.BigDecimal;
+
+@Configuration
+public class BatchConfig {
+    private JobRepository jobRepository;
+
+    public BatchConfig(JobRepository jobRepository) {
+        this.jobRepository = jobRepository;
+    }
+
+    @Bean
+    public PlatformTransactionManager transactionManager(DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
+
+    @Bean
+    Job job(Step step) {
+        return new JobBuilder("job", jobRepository)
+                    .start(step).incrementer(new RunIdIncrementer()).build();
+    }
+
+    @Bean
+    Step step(ItemReader<TransacaoCnab> itemReader, ItemProcessor<TransacaoCnab, Transacao> itemProcessor,
+              ItemWriter<Transacao> itemWriter, PlatformTransactionManager transactionManager) {
+        return new StepBuilder("step", jobRepository)
+                                .<TransacaoCnab, Transacao>chunk(1000)
+                                .reader(itemReader).processor(itemProcessor)
+                                .writer(itemWriter)
+                                .transactionManager(transactionManager)
+                                .build();
+    }
+
+    @Bean
+    FlatFileItemReader<TransacaoCnab> reader() {
+        FixedLengthTokenizer tokenizer = new FixedLengthTokenizer();
+        tokenizer.setColumns(
+                new Range(1,1), new Range(2,9), new Range(10,19),
+                new Range(20,30), new Range(31,42), new Range(43,48),
+                new Range(49,62), new Range(63,80)
+        );
+        tokenizer.setNames("tipo", "data", "valor", "cpf", "cartao", "hora", "donoDaLoja", "nomeDaLoja");
+        tokenizer.setStrict(false);
+
+        return new FlatFileItemReaderBuilder<TransacaoCnab>().name("reader")
+                    .resource(new FileSystemResource("files\\CNAB.txt"))
+                    .lineTokenizer(tokenizer)
+                    .targetType(TransacaoCnab.class)
+                    .build();
+    }
+
+    @Bean
+    ItemProcessor<TransacaoCnab, Transacao> processor() {
+        return item -> {
+            var transacao = new Transacao(
+                             null, item.tipo(), null, null, item.cpf(),
+                                item.cartao(), null, item.donoDaLoja().trim(),
+                                item.nomeDaLoja().trim()
+                                )
+                                .withValor(item.valor().divide(BigDecimal.valueOf(100)))
+                                .withData(item.data()).withHora(item.hora());
+            return transacao;
+        };
+    }
+
+    @Bean
+    JdbcBatchItemWriter<Transacao> writer(DataSource dataSource) {
+        return new JdbcBatchItemWriterBuilder<Transacao>().dataSource(dataSource)
+                                                          .sql("""
+                                                                  INSERT INTO transacao(
+                                                                    tipo, data, valor, cpf, cartao, 
+                                                                    hora, dono_loja, nome_loja
+                                                                  ) VALUES (
+                                                                    :tipo, :data, :valor, :cpf, :cartao,
+                                                                    :hora, :donoDaLoja, :nomeDaLoja
+                                                                    )
+                                                                                                                                        
+                                                                  """).beanMapped().build();
+    }
+}
