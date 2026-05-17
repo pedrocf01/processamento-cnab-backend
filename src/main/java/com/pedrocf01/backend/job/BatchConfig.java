@@ -1,8 +1,13 @@
-package com.pedrocf01.backend;
+package com.pedrocf01.backend.job;
 
+import com.pedrocf01.backend.domain.Transacao;
+import com.pedrocf01.backend.domain.TransacaoCnab;
+import org.springframework.batch.core.configuration.JobRegistry;
+import org.springframework.batch.core.configuration.support.MapJobRegistry;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.job.parameters.RunIdIncrementer;
+import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.launch.support.TaskExecutorJobOperator;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -17,7 +22,9 @@ import org.springframework.batch.infrastructure.item.file.transform.FixedLengthT
 import org.springframework.batch.infrastructure.item.file.transform.Range;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -32,15 +39,15 @@ public class BatchConfig {
         this.jobRepository = jobRepository;
     }
 
-    @Bean
+    /*@Bean
     public PlatformTransactionManager transactionManager(DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
-    }
+    }*/
 
     @Bean
     Job job(Step step) {
         return new JobBuilder("job", jobRepository)
-                    .start(step).incrementer(new RunIdIncrementer()).build();
+                    .start(step).build();
     }
 
     @Bean
@@ -74,30 +81,41 @@ public class BatchConfig {
 
     @Bean
     ItemProcessor<TransacaoCnab, Transacao> processor() {
-        return item -> {
-            var transacao = new Transacao(
-                             null, item.tipo(), null, null, item.cpf(),
-                                item.cartao(), null, item.donoDaLoja().trim(),
-                                item.nomeDaLoja().trim()
-                                )
-                                .withValor(item.valor().divide(BigDecimal.valueOf(100)))
-                                .withData(item.data()).withHora(item.hora());
-            return transacao;
-        };
+        return item -> new Transacao(
+                                     null, item.tipo(), null, item.valor().divide(BigDecimal.valueOf(100)),
+                                        item.cpf(), item.cartao(), null, item.donoDaLoja().trim(),
+                                        item.nomeDaLoja().trim()
+                                        )
+                                        .withData(item.data()).withHora(item.hora());
     }
 
     @Bean
     JdbcBatchItemWriter<Transacao> writer(DataSource dataSource) {
+        String sql = """
+                        INSERT INTO transacao(
+                          tipo, data, valor, cpf, cartao,
+                          hora, dono_loja, nome_loja
+                        ) VALUES (
+                          :tipo, :data, :valor, :cpf, :cartao,
+                          :hora, :donoDaLoja, :nomeDaLoja
+                          )                                                                     
+                        """;
         return new JdbcBatchItemWriterBuilder<Transacao>().dataSource(dataSource)
-                                                          .sql("""
-                                                                  INSERT INTO transacao(
-                                                                    tipo, data, valor, cpf, cartao, 
-                                                                    hora, dono_loja, nome_loja
-                                                                  ) VALUES (
-                                                                    :tipo, :data, :valor, :cpf, :cartao,
-                                                                    :hora, :donoDaLoja, :nomeDaLoja
-                                                                    )
-                                                                                                                                        
-                                                                  """).beanMapped().build();
+                                                          .sql(sql).beanMapped().build();
+    }
+
+    @Bean
+    public JobRegistry jobRegistry() {
+        return new MapJobRegistry();
+    }
+
+    @Bean
+    JobOperator jobOperatorAsync(JobRepository jobRepository) throws Exception {
+        var jobOperator = new TaskExecutorJobOperator();
+        jobOperator.setJobRepository(jobRepository);
+        jobOperator.setTaskExecutor(new SimpleAsyncTaskExecutor());
+        jobOperator.setJobRegistry(jobRegistry());
+        jobOperator.afterPropertiesSet();
+        return jobOperator;
     }
 }

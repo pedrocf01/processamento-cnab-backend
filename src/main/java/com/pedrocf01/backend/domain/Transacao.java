@@ -1,4 +1,4 @@
-package com.pedrocf01.backend;
+package com.pedrocf01.backend.domain;
 
 import java.math.BigDecimal;
 import java.sql.Date;
