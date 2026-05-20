@@ -1,4 +1,4 @@
-package com.pedrocf01.backend.domain;
+package com.pedrocf01.backend.service;
 
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -35,7 +34,7 @@ public class CnabService {
                                                                         String.class, true)
                                                       .addJobParameter("cnabFile",
                                                               "file:" + targetLocation.toString(),
-                                                                        String.class)
+                                                                        String.class, false)
                                                       .toJobParameters();
 
         jobOperator.start(job, jobParameters);

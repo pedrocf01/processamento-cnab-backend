@@ -1,4 +1,4 @@
-package com.pedrocf01.backend.domain;
+package com.pedrocf01.backend.entity;
 
 import java.math.BigDecimal;
 

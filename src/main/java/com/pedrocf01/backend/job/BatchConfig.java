@@ -1,7 +1,7 @@
 package com.pedrocf01.backend.job;
 
-import com.pedrocf01.backend.domain.Transacao;
-import com.pedrocf01.backend.domain.TransacaoCnab;
+import com.pedrocf01.backend.entity.Transacao;
+import com.pedrocf01.backend.entity.TransacaoCnab;
 import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.configuration.support.MapJobRegistry;
 import org.springframework.batch.core.job.Job;
@@ -22,10 +22,8 @@ import org.springframework.batch.infrastructure.item.file.transform.FixedLengthT
 import org.springframework.batch.infrastructure.item.file.transform.Range;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
