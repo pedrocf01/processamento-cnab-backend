@@ -1,5 +1,6 @@
 package com.pedrocf01.backend.job;
 
+import com.pedrocf01.backend.entity.TipoTransacao;
 import com.pedrocf01.backend.entity.Transacao;
 import com.pedrocf01.backend.entity.TransacaoCnab;
 import org.springframework.batch.core.configuration.JobRegistry;
@@ -79,12 +80,19 @@ public class BatchConfig {
 
     @Bean
     ItemProcessor<TransacaoCnab, Transacao> processor() {
-        return item -> new Transacao(
-                                     null, item.tipo(), null, item.valor().divide(BigDecimal.valueOf(100)),
-                                        item.cpf(), item.cartao(), null, item.donoDaLoja().trim(),
-                                        item.nomeDaLoja().trim()
-                                        )
-                                        .withData(item.data()).withHora(item.hora());
+        return item -> {
+            var tipoTransacao = TipoTransacao.findByTipo(item.tipo());
+            var valorNormalizado = item.valor()
+                                       .divide(new BigDecimal(100))
+                                       .multiply(tipoTransacao.getSinal());
+
+            return new Transacao(
+                        null, item.tipo(), null, valorNormalizado,
+                        item.cpf(), item.cartao(), null, item.donoDaLoja().trim(),
+                        item.nomeDaLoja().trim()
+                        )
+                        .withData(item.data()).withHora(item.hora());
+        };
     }
 
     @Bean
