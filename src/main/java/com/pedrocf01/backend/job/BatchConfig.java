@@ -4,6 +4,7 @@ import com.pedrocf01.backend.entity.TipoTransacao;
 import com.pedrocf01.backend.entity.Transacao;
 import com.pedrocf01.backend.entity.TransacaoCnab;
 import org.springframework.batch.core.configuration.JobRegistry;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.configuration.support.MapJobRegistry;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -21,9 +22,11 @@ import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.transform.FixedLengthTokenizer;
 import org.springframework.batch.infrastructure.item.file.transform.Range;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -60,8 +63,9 @@ public class BatchConfig {
                                 .build();
     }
 
+    @StepScope
     @Bean
-    FlatFileItemReader<TransacaoCnab> reader() {
+    FlatFileItemReader<TransacaoCnab> reader(@Value("#{jobParameters['cnabFile']}") Resource resource) {
         FixedLengthTokenizer tokenizer = new FixedLengthTokenizer();
         tokenizer.setColumns(
                 new Range(1,1), new Range(2,9), new Range(10,19),
@@ -72,7 +76,7 @@ public class BatchConfig {
         tokenizer.setStrict(false);
 
         return new FlatFileItemReaderBuilder<TransacaoCnab>().name("reader")
-                    .resource(new FileSystemResource("files\\CNAB.txt"))
+                    .resource(resource)
                     .lineTokenizer(tokenizer)
                     .targetType(TransacaoCnab.class)
                     .build();
