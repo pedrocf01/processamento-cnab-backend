@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+    postgres-db:
+        image: postgres:17
+        ports:
+            - "5432:5432"
+        environment:
+            - POSTGRES_DB=cnabdb
+            - POSTGRES_USER=pedro
+            - POSTGRES_PASSWORD=123456
+
+    spring-app:
+        image: backend-cnab:latest
+        ports:
+            - "8080:8080"
+        environment:
+            SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/cnabdb
+            SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
+            SPRING_DATASOURCE_USERNAME: pedro
+            SPRING_DATASOURCE_PASSWORD: "123456"
+        depends_on:
+            - postgres-db
+
+    spa-app:
+        build:
+            context: ../frontend
+            dockerfile: Dockerfile
+        ports:
+            - "9090:9090"
+        depends_on:
+            - spring-app        
