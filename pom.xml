@@ -41,7 +41,7 @@
 			<artifactId>spring-boot-starter-batch</artifactId>
 		</dependency>
 
-        <!--The generation of the metadata tables depend on this -->
+        <!--The generation of the metadata tables depend on this dependency-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-batch-jdbc</artifactId>
@@ -70,6 +70,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
     </dependencies>

@@ -17,8 +17,8 @@ public record Transacao(
         Long cpf,
         String cartao,
         Time hora,
-        @Column("DONO_LOJA") String donoDaLoja,
-        @Column("NOME_LOJA") String nomeDaLoja
+        @Column("dono_loja") String donoDaLoja,
+        @Column("nome_loja") String nomeDaLoja
 ) {
 
     public Transacao withValor(BigDecimal valor) {
