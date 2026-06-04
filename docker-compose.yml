@@ -24,7 +24,7 @@ services:
 
     spa-app:
         build:
-            context: ../frontend
+            context: ../processamento-cnab-frontend
             dockerfile: Dockerfile
         ports:
             - "9090:9090"
